@@ -274,3 +274,98 @@ describe('exponential backoff', () => {
     expect(BACKOFF_BASE_MS * Math.pow(2, 2)).toBe(4000);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Tests: Session storage persistence (MV3 service worker restart recovery)
+// ---------------------------------------------------------------------------
+
+// Replicated helpers — mirror the logic in background/service-worker.js
+async function persistConversation(tabId, conversation, mockSession) {
+  if (!tabId || !mockSession) return;
+  try {
+    await mockSession.set({ [`conv_${tabId}`]: conversation });
+  } catch (_e) { /* silently degrade */ }
+}
+
+async function restoreConversation(tabId, mockSession, conversations) {
+  if (!tabId || !mockSession) return null;
+  try {
+    const result = await mockSession.get(`conv_${tabId}`);
+    const conv = result[`conv_${tabId}`];
+    if (conv) {
+      conversations.set(tabId, conv);
+      return conv;
+    }
+  } catch (_e) { /* silently degrade */ }
+  return null;
+}
+
+describe('session storage persistence', () => {
+  it('persists conversation under a tab-namespaced key', async () => {
+    const stored = {};
+    const mockSession = {
+      set: jest.fn(async (obj) => { Object.assign(stored, obj); }),
+    };
+    const conv = { tabId: 42, messages: [{ role: 'system', content: 'sys' }] };
+
+    await persistConversation(42, conv, mockSession);
+
+    expect(mockSession.set).toHaveBeenCalledWith({ 'conv_42': conv });
+    expect(stored['conv_42']).toEqual(conv);
+  });
+
+  it('restores conversation from session storage on cache miss', async () => {
+    const mockConv = { tabId: 7, messages: [{ role: 'system', content: 'sys' }] };
+    const sessionStore = { 'conv_7': mockConv };
+    const mockSession = {
+      get: jest.fn(async (key) => ({ [key]: sessionStore[key] })),
+    };
+    const conversations = new Map();
+
+    const result = await restoreConversation(7, mockSession, conversations);
+
+    expect(result).toEqual(mockConv);
+    expect(conversations.get(7)).toEqual(mockConv); // warmed in-memory cache
+  });
+
+  it('returns null when session storage has no entry for that tab', async () => {
+    const mockSession = {
+      get: jest.fn(async (_key) => ({})),
+    };
+    const result = await restoreConversation(99, mockSession, new Map());
+    expect(result).toBeNull();
+  });
+
+  it('returns null and skips storage when tabId is null', async () => {
+    const mockSession = { get: jest.fn() };
+    const result = await restoreConversation(null, mockSession, new Map());
+    expect(result).toBeNull();
+    expect(mockSession.get).not.toHaveBeenCalled();
+  });
+
+  it('returns null and skips storage when mockSession is null (unavailable)', async () => {
+    const result = await restoreConversation(5, null, new Map());
+    expect(result).toBeNull();
+  });
+
+  it('handles storage.get throwing gracefully and returns null', async () => {
+    const mockSession = {
+      get: jest.fn(async () => { throw new Error('quota exceeded'); }),
+    };
+    const result = await restoreConversation(42, mockSession, new Map());
+    expect(result).toBeNull();
+  });
+
+  it('handles storage.set throwing gracefully without propagating', async () => {
+    const mockSession = {
+      set: jest.fn(async () => { throw new Error('storage full'); }),
+    };
+    await expect(persistConversation(1, { messages: [] }, mockSession)).resolves.toBeUndefined();
+  });
+
+  it('does not call storage.set when tabId is falsy', async () => {
+    const mockSession = { set: jest.fn() };
+    await persistConversation(null, { messages: [] }, mockSession);
+    expect(mockSession.set).not.toHaveBeenCalled();
+  });
+});

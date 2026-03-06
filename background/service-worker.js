@@ -109,12 +109,14 @@ browser.runtime.onConnect.addListener((port) => {
 
 browser.tabs.onRemoved.addListener((tabId) => {
   conversations.delete(tabId);
+  _clearPersistedConversation(tabId);
 });
 
 browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
   // Clear conversation when user navigates to a new page
   if (changeInfo.url) {
     conversations.delete(tabId);
+    _clearPersistedConversation(tabId);
   }
 });
 
@@ -166,6 +168,7 @@ async function _handleSummarize(port, tabId, msg) {
 
   if (tabId !== null) {
     conversations.set(tabId, conversation);
+    await _persistConversation(tabId, conversation);
   }
 
   await _streamCompletion(port, apiKey, model, conversation.messages, tabId);
@@ -185,7 +188,12 @@ async function _handleFollowUp(port, tabId, msg) {
     return;
   }
 
-  const conversation = tabId !== null ? conversations.get(tabId) : null;
+  let conversation = tabId !== null ? conversations.get(tabId) : null;
+  if (!conversation && tabId !== null) {
+    // Service worker may have been killed between summarize and follow-up (MV3 ephemeral lifecycle).
+    // Attempt to restore the conversation from session storage.
+    conversation = await _restoreConversation(tabId);
+  }
   if (!conversation) {
     port.postMessage({
       type: 'error',
@@ -222,7 +230,12 @@ async function _handleFollowUp(port, tabId, msg) {
  */
 async function _handleGetStatus(port, tabId) {
   const apiKey = await _getApiKey();
-  const hasConversation = tabId !== null && conversations.has(tabId);
+  let hasConversation = tabId !== null && conversations.has(tabId);
+  if (!hasConversation && tabId !== null) {
+    // Check session storage in case the service worker restarted (MV3 lifecycle).
+    const restored = await _restoreConversation(tabId);
+    hasConversation = restored !== null;
+  }
   port.postMessage({
     type: 'status',
     hasApiKey: Boolean(apiKey),
@@ -334,6 +347,8 @@ async function _streamCompletion(port, apiKey, model, messages, tabId, attempt =
                 role: 'assistant',
                 content: assistantContent,
               });
+              // Persist updated history so it survives a future service worker restart.
+              _persistConversation(tabId, conversations.get(tabId));
             }
             port.postMessage({ type: 'done' });
           }
@@ -428,6 +443,55 @@ function _trimHistory(conversation) {
  */
 async function _getApiKey() {
   return _getSetting('openai_api_key');
+}
+
+/**
+ * Persist a conversation to session storage so it survives MV3 service worker restarts.
+ * Silently no-ops if chrome.storage.session is unavailable (older Chrome / Firefox <115).
+ *
+ * @param {number|null} tabId
+ * @param {Conversation} conversation
+ * @returns {Promise<void>}
+ */
+async function _persistConversation(tabId, conversation) {
+  if (!tabId || !browser.storage || !browser.storage.session) return;
+  try {
+    await browser.storage.session.set({ [`conv_${tabId}`]: conversation });
+  } catch (_e) {
+    // Session storage unavailable — silently degrade.
+  }
+}
+
+/**
+ * Attempt to restore a conversation from session storage after a service worker restart.
+ * Returns null (and is a no-op) if not found or session storage is unavailable.
+ *
+ * @param {number|null} tabId
+ * @returns {Promise<Conversation|null>}
+ */
+async function _restoreConversation(tabId) {
+  if (!tabId || !browser.storage || !browser.storage.session) return null;
+  try {
+    const result = await browser.storage.session.get(`conv_${tabId}`);
+    const conv = result[`conv_${tabId}`];
+    if (conv) {
+      conversations.set(tabId, conv); // Warm the in-memory cache.
+      return conv;
+    }
+  } catch (_e) {
+    // Session storage unavailable — silently degrade.
+  }
+  return null;
+}
+
+/**
+ * Remove a persisted conversation from session storage.
+ *
+ * @param {number} tabId
+ */
+function _clearPersistedConversation(tabId) {
+  if (!browser.storage || !browser.storage.session) return;
+  browser.storage.session.remove(`conv_${tabId}`).catch(() => {});
 }
 
 /**
