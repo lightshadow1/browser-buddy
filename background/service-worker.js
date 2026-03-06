@@ -51,6 +51,26 @@ browser.runtime.onConnect.addListener((port) => {
     return;
   }
 
+  // Guard against bfcache: Chrome closes the port when a page is cached.
+  // Wrap postMessage so stale sends are silently dropped instead of
+  // generating "Unchecked runtime.lastError" warnings.
+  let _disconnected = false;
+  port.onDisconnect.addListener(() => {
+    _disconnected = true;
+  });
+  const _origPost = port.postMessage.bind(port);
+  port.postMessage = (msg) => {
+    if (_disconnected) {
+      return;
+    }
+    try {
+      _origPost(msg);
+    } catch (_e) {
+      _disconnected = true;
+    }
+  };
+  port.isDisconnected = () => _disconnected;
+
   port.onMessage.addListener(async (msg) => {
     if (!_validateMessage(msg)) {
       port.postMessage({ type: 'error', message: 'Invalid message payload.' });
@@ -286,6 +306,11 @@ async function _streamCompletion(port, apiKey, model, messages, tabId, attempt =
   try {
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      // Abort stream if the content-script port was closed (e.g. bfcache)
+      if (port.isDisconnected && port.isDisconnected()) {
+        reader.cancel().catch(() => {});
+        break;
+      }
       const { done, value } = await reader.read();
       if (done) {
         break;
