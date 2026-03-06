@@ -515,96 +515,48 @@ function _renderMarkdownWithRefs(bubble, text) {
     return;
   }
 
-  // Replace [p-N] references with a safe placeholder before markdown parsing
-  // so marked doesn't mangle the brackets
-  const REF_PLACEHOLDER = '\x00REF\x00';
-  const refs = [];
-  const withPlaceholders = text.replace(/\[p-(\d+)\]/g, (_match, n) => {
-    refs.push(`p-${n}`);
-    return `${REF_PLACEHOLDER}${refs.length - 1}${REF_PLACEHOLDER}`;
+  // Replace [p-N] refs with inline span elements BEFORE markdown parsing.
+  // marked.js passes inline HTML through unchanged; DOMPurify preserves
+  // <span>, class, and data-ref (all in SANITIZE_CONFIG allow-lists).
+  // This avoids the null-byte placeholder approach which DOMPurify strips.
+  const withChips = text.replace(/\[p-(\d+)\]/g, (_match, n) => {
+    return `<span class="ref-chip" data-ref="p-${n}"></span>`;
   });
 
   // Parse markdown
   let html;
   if (typeof marked !== 'undefined') {
-    html = marked.parse(withPlaceholders, { breaks: true, gfm: true });
+    html = marked.parse(withChips, { breaks: true, gfm: true });
   } else {
     // Fallback: minimal inline markdown
-    html = _simpleMarkdown(withPlaceholders);
+    html = _simpleMarkdown(withChips);
   }
 
-  // Sanitize
+  // Sanitize — span + class + data-ref survive the allow-list
   if (typeof DOMPurify !== 'undefined') {
     html = DOMPurify.sanitize(html, SANITIZE_CONFIG);
   }
 
-  // Set HTML
   bubble.innerHTML = html;
 
-  // Replace placeholders with interactive chip elements
-  _replacePlaceholdersWithChips(bubble, refs);
+  // Post-process surviving chip spans: add label, tooltip, and event listeners
+  bubble.querySelectorAll('span.ref-chip[data-ref]').forEach((chip) => {
+    _initRefChip(chip, chip.getAttribute('data-ref'));
+  });
 }
 
 /**
- * Walk the bubble DOM tree and replace ref placeholders with chip spans.
+ * Initialise a ref chip element that already exists in the DOM.
+ * Adds display text, aria label, tooltip, and click/keyboard handlers.
  *
- * @param {HTMLElement} root
- * @param {string[]} refs  - Ordered list of paragraph IDs for each placeholder
- */
-function _replacePlaceholdersWithChips(root, refs) {
-  const REF_PLACEHOLDER = '\x00REF\x00';
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const textNodes = [];
-  let node;
-  while ((node = walker.nextNode())) {
-    textNodes.push(node);
-  }
-
-  for (const textNode of textNodes) {
-    const content = textNode.textContent;
-    if (!content.includes(REF_PLACEHOLDER)) {
-      continue;
-    }
-
-    const fragment = document.createDocumentFragment();
-    const parts = content.split(new RegExp(`${REF_PLACEHOLDER}(\\d+)${REF_PLACEHOLDER}`));
-
-    for (let i = 0; i < parts.length; i++) {
-      if (i % 2 === 0) {
-        // Plain text
-        if (parts[i]) {
-          fragment.appendChild(document.createTextNode(parts[i]));
-        }
-      } else {
-        // Ref index
-        const refIdx = parseInt(parts[i], 10);
-        const refId = refs[refIdx];
-        if (refId !== undefined) {
-          fragment.appendChild(_createRefChip(refId));
-        }
-      }
-    }
-
-    textNode.parentNode.replaceChild(fragment, textNode);
-  }
-}
-
-/**
- * Create a clickable reference chip element.
- *
+ * @param {HTMLElement} chip
  * @param {string} refId  - e.g. "p-3"
- * @returns {HTMLElement}
  */
-function _createRefChip(refId) {
-  const chip = document.createElement('span');
-  chip.className = 'ref-chip';
-  chip.setAttribute('data-ref', refId);
-  chip.setAttribute('tabindex', '0');
-  chip.setAttribute('role', 'button');
-
-  // Display as [N] where N is the numeric part
+function _initRefChip(chip, refId) {
   const num = refId.replace('p-', '');
   chip.textContent = `[${num}]`;
+  chip.setAttribute('tabindex', '0');
+  chip.setAttribute('role', 'button');
   chip.setAttribute('aria-label', `Reference ${num} — click to jump to source paragraph`);
 
   // Tooltip: first 100 chars of the paragraph
@@ -628,8 +580,6 @@ function _createRefChip(refId) {
       }
     }
   });
-
-  return chip;
 }
 
 /**
