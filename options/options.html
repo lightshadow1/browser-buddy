@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Summarizer — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>✨ Article Summarizer</h1>
+        <p class="subtitle">Settings</p>
+      </header>
+
+      <main>
+        <form id="settings-form" novalidate>
+          <section class="card">
+            <h2>OpenAI API Key</h2>
+            <p class="hint">
+              Your API key is stored locally on this device only and is never shared.
+              Get a key at
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
+                >platform.openai.com</a
+              >.
+            </p>
+
+            <div class="field">
+              <label for="api-key">API Key</label>
+              <div class="input-row">
+                <input
+                  type="password"
+                  id="api-key"
+                  name="api-key"
+                  placeholder="sk-..."
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="api-key-hint api-key-status"
+                />
+                <button type="button" id="toggle-visibility" aria-label="Show API key" title="Show/hide">
+                  👁
+                </button>
+              </div>
+              <p id="api-key-hint" class="field-hint">Must start with <code>sk-</code></p>
+            </div>
+
+            <div id="api-key-status" role="status" aria-live="polite" class="status"></div>
+          </section>
+
+          <section class="card">
+            <h2>Model</h2>
+            <div class="field">
+              <label for="model">Default Model</label>
+              <select id="model" name="model" aria-describedby="model-hint">
+                <option value="gpt-4o-mini">gpt-4o-mini (recommended — fast &amp; affordable)</option>
+                <option value="gpt-4o">gpt-4o (more capable, higher cost)</option>
+              </select>
+              <p id="model-hint" class="field-hint">Used for all article summaries and follow-up questions.</p>
+            </div>
+          </section>
+
+          <div class="actions">
+            <button type="submit" id="save-btn">Save Settings</button>
+          </div>
+        </form>
+      </main>
+
+      <footer>
+        <p>
+          Article Summarizer v0.1.0 —
+          <a href="https://github.com/browser-buddy/article-summarizer" target="_blank" rel="noopener noreferrer"
+            >GitHub</a
+          >
+        </p>
+      </footer>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

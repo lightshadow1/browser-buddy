@@ -1,0 +1,45 @@
+{
+  "manifest_version": 2,
+  "name": "Article Summarizer",
+  "version": "0.1.0",
+  "description": "Summarize any article and chat about it with AI-powered paragraph references.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "https://api.openai.com/*"
+  ],
+  "background": {
+    "scripts": ["background/service-worker.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "lib/readability.js",
+        "lib/dompurify.min.js",
+        "lib/marked.min.js",
+        "content/extractor.js",
+        "content/widget.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": "script-src 'self'; object-src 'none';",
+  "options_ui": {
+    "page": "options/options.html",
+    "browser_style": false
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "article-summarizer@browser-buddy",
+      "strict_min_version": "109.0"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

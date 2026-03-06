@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --ci
+
+      - name: Build for all browsers
+        run: node build.js
+
+      - name: Package Chrome extension
+        run: |
+          cd dist/chrome
+          zip -r ../../article-summarizer-chrome-${{ github.ref_name }}.zip .
+          cd ../..
+
+      - name: Package Firefox extension
+        run: |
+          cd dist/firefox
+          zip -r ../../article-summarizer-firefox-${{ github.ref_name }}.zip .
+          cd ../..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            article-summarizer-chrome-${{ github.ref_name }}.zip
+            article-summarizer-firefox-${{ github.ref_name }}.zip
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            ### Chrome
+            1. Download `article-summarizer-chrome-${{ github.ref_name }}.zip`
+            2. Extract the ZIP
+            3. Go to `chrome://extensions` → Enable Developer Mode → Load unpacked → select extracted folder
+
+            ### Firefox
+            1. Download `article-summarizer-firefox-${{ github.ref_name }}.zip`
+            2. Go to `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → select the ZIP
+
+            See [CHANGELOG.md](CHANGELOG.md) for what's new.
