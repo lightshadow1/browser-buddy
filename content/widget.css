@@ -7,34 +7,47 @@
   padding: 0;
 }
 
+/* ============================================================
+   Design tokens — on :host so they cascade into shadow DOM children.
+   :root inside a shadow stylesheet refers to the document <html> element
+   which shadow DOM cannot style; only :host vars inherit downward.
+   ============================================================ */
 :host {
   all: initial;
-}
-
-/* ============================================================
-   Design tokens
-   ============================================================ */
-:root, .widget-root {
-  --color-primary:       #4f46e5; /* indigo-600 */
-  --color-primary-hover: #4338ca; /* indigo-700 */
-  --color-primary-light: rgba(79, 70, 229, 0.12);
-  --color-bg:            #ffffff;
-  --color-surface:       #f9fafb;
-  --color-border:        #e5e7eb;
-  --color-text:          #111827;
-  --color-text-muted:    #6b7280;
-  --color-user-bubble:   #eef2ff;
-  --color-ai-bubble:     #f9fafb;
+  /* Indigo palette */
+  --color-primary:       #5b50e8;
+  --color-primary-dark:  #4338ca;
+  --color-primary-light: rgba(91,80,232,0.15);
+  /* Backgrounds — tinted so panel stands out on white pages */
+  --color-bg:            #eef0ff;
+  --color-surface:       #e4e7fa;
+  --color-surface-2:     #d8ddf5;
+  /* Border & text */
+  --color-border:        #b0b8e8;
+  --color-text:          #0f172a;
+  --color-text-muted:    #64748b;
+  /* Bubbles */
+  --color-user-bg:       #5b50e8;
+  --color-user-text:     #ffffff;
+  --color-ai-bg:         #ffffff;
+  --color-ai-border:     #c4caf0;
+  /* Status */
   --color-error:         #dc2626;
   --color-error-bg:      #fef2f2;
-  --radius-sm:           4px;
-  --radius-md:           8px;
-  --radius-lg:           16px;
-  --shadow-panel:        0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10);
-  --shadow-fab:          0 4px 12px rgba(0,0,0,0.20);
+  /* Geometry */
+  --radius-sm:    4px;
+  --radius-md:    10px;
+  --radius-lg:    18px;
+  --radius-pill:  999px;
+  /* Shadows */
+  --shadow-panel: 0 20px 60px rgba(67,56,202,0.22), 0 4px 20px rgba(15,23,42,0.16);
+  --shadow-fab:   0 4px 18px rgba(91,80,232,0.50);
+  --shadow-msg:   0 1px 4px rgba(15,23,42,0.10);
+  /* Typography */
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --z-fab:    2147483647;
-  --z-panel:  2147483646;
+  /* Stack */
+  --z-fab:   2147483647;
+  --z-panel: 2147483646;
 }
 
 /* ============================================================
@@ -45,10 +58,10 @@
   bottom: 24px;
   right: 24px;
   z-index: var(--z-fab);
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, #5b50e8, #4338ca);
   color: #fff;
   border: none;
   cursor: pointer;
@@ -58,31 +71,31 @@
   box-shadow: var(--shadow-fab);
   font-size: 22px;
   font-family: var(--font);
-  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
   user-select: none;
 }
 
 #as-fab:hover,
 #as-fab:focus-visible {
-  background: var(--color-primary-hover);
   transform: scale(1.08);
-  outline: 3px solid var(--color-primary);
-  outline-offset: 2px;
+  box-shadow: 0 6px 24px rgba(91,80,232,0.60);
+  outline: 3px solid rgba(91,80,232,0.45);
+  outline-offset: 3px;
 }
 
 #as-fab:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
 #as-fab.disabled {
-  background: #9ca3af;
+  background: #94a3b8;
   cursor: not-allowed;
-  box-shadow: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 #as-fab.disabled:hover {
   transform: none;
-  background: #9ca3af;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 /* ============================================================
@@ -90,12 +103,12 @@
    ============================================================ */
 #as-panel {
   position: fixed;
-  bottom: 88px;
+  bottom: 90px;
   right: 24px;
   z-index: var(--z-panel);
-  width: 380px;
-  height: 520px;
-  min-width: 300px;
+  width: 400px;
+  height: 560px;
+  min-width: 320px;
   background: var(--color-bg);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-panel);
@@ -105,7 +118,8 @@
   font-size: 14px;
   color: var(--color-text);
   overflow: hidden;
-  border: 1px solid var(--color-border);
+  border: 1.5px solid var(--color-border);
+  border-top: 3px solid #5b50e8;
 }
 
 #as-panel[hidden] {
@@ -134,13 +148,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--color-primary);
+  padding: 13px 16px;
+  background: linear-gradient(135deg, #5b50e8 0%, #4338ca 100%);
   color: #fff;
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: calc(var(--radius-lg) - 1.5px) calc(var(--radius-lg) - 1.5px) 0 0;
 }
 
 #as-header:active {
@@ -148,24 +162,24 @@
 }
 
 #as-title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
 }
 
 .as-header-actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 
 .as-icon-btn {
-  background: none;
+  background: rgba(255,255,255,0.1);
   border: none;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255,255,255,0.9);
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
   font-family: var(--font);
   line-height: 1;
   transition: background 0.12s, color 0.12s;
@@ -173,9 +187,9 @@
 
 .as-icon-btn:hover,
 .as-icon-btn:focus-visible {
-  background: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.22);
   color: #fff;
-  outline: 2px solid rgba(255,255,255,0.6);
+  outline: 2px solid rgba(255,255,255,0.5);
   outline-offset: 1px;
 }
 
