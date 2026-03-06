@@ -56,6 +56,9 @@ browser.runtime.onConnect.addListener((port) => {
   // generating "Unchecked runtime.lastError" warnings.
   let _disconnected = false;
   port.onDisconnect.addListener(() => {
+    // Consume lastError: Chrome sets it on disconnect (e.g. bfcache).
+    // Not reading it here triggers "Unchecked runtime.lastError" warnings.
+    void browser.runtime.lastError;
     _disconnected = true;
   });
   const _origPost = port.postMessage.bind(port);
