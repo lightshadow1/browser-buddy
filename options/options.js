@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ---------------------------------------------------------------------------
 
 function _loadSettings() {
-  browser.storage.local.get(['openai_api_key', 'openai_model'], (result) => {
+  chrome.storage.local.get(['openai_api_key', 'openai_model'], (result) => {
     if (result.openai_api_key) {
       apiKeyInput.value = result.openai_api_key;
     }
@@ -76,7 +76,7 @@ async function _onSave(e) {
     return;
   }
 
-  browser.storage.local.set({ openai_api_key: apiKey, openai_model: model }, () => {
+  chrome.storage.local.set({ openai_api_key: apiKey, openai_model: model }, () => {
     _setStatus('success', '✅ Settings saved successfully.');
     saveBtn.disabled = false;
   });
