@@ -15,6 +15,10 @@
  *                           { type: "status", hasApiKey: boolean, hasConversation: boolean }
  */
 
+// Cross-browser shim — `browser` is native in Firefox; Chrome uses `chrome` in service workers
+// eslint-disable-next-line no-redeclare
+const browser = globalThis.browser || globalThis.chrome;
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const MAX_ARTICLE_CHARS = 48000;
