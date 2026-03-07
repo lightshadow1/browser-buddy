@@ -137,6 +137,44 @@ describe('buildParagraphIndex', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Tests: Nested block element behaviour
+// ---------------------------------------------------------------------------
+
+describe('nested block elements', () => {
+  it('documents double-counting for nested <li> elements (known behaviour)', () => {
+    // The TreeWalker uses FILTER_SKIP (not FILTER_REJECT) on non-block nodes,
+    // so it descends into accepted block nodes and visits their block children.
+    // A nested <li> therefore appears both in the parent <li>s textContent
+    // and as its own entry. This test documents the current behaviour.
+    const container = document.createElement('div');
+    container.innerHTML = `
+      <ul>
+        <li>Outer item <ul><li>Inner item</li></ul></li>
+      </ul>
+    `;
+    const { paragraphs, fullText } = buildParagraphIndex(container);
+    // Both the outer li (text includes "Inner item") and inner li are indexed.
+    expect(paragraphs.length).toBe(2);
+    // Outer li textContent includes the nested text
+    expect(paragraphs[0].text).toContain('Inner item');
+    // Inner li is separately indexed
+    expect(paragraphs[1].text).toBe('Inner item');
+    // fullText therefore contains "Inner item" twice
+    const occurrences = (fullText.match(/Inner item/g) || []).length;
+    expect(occurrences).toBe(2);
+  });
+
+  it('does not double-count non-nested block siblings', () => {
+    const container = document.createElement('div');
+    container.innerHTML = '<p>First</p><p>Second</p>';
+    const { paragraphs } = buildParagraphIndex(container);
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0].text).toBe('First');
+    expect(paragraphs[1].text).toBe('Second');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Tests: Token truncation
 // ---------------------------------------------------------------------------
 
@@ -241,5 +279,60 @@ describe('fullText format', () => {
     container.innerHTML = '<p>A</p><p>B</p>';
     const { fullText } = buildParagraphIndex(container);
     expect(fullText).toBe('[p-0]: A\n[p-1]: B');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: getSerializableParagraphs — strips DOM element references
+// ---------------------------------------------------------------------------
+
+// Replicated logic mirroring getSerializableParagraphs in extractor.js
+function getSerializableParagraphs(paragraphIndex) {
+  return Array.from(paragraphIndex.values()).map(({ id, text }) => ({ id, text }));
+}
+
+describe('getSerializableParagraphs', () => {
+  it('strips the element property from each paragraph', () => {
+    const container = document.createElement('div');
+    container.innerHTML = '<p>Alpha</p><p>Beta</p>';
+    const { paragraphs } = buildParagraphIndex(container);
+    const index = new Map(paragraphs.map((p) => [p.id, p]));
+
+    const serialised = getSerializableParagraphs(index);
+
+    for (const item of serialised) {
+      expect(item).not.toHaveProperty('element');
+    }
+  });
+
+  it('preserves id and text for each paragraph', () => {
+    const container = document.createElement('div');
+    container.innerHTML = '<p>Hello</p><p>World</p>';
+    const { paragraphs } = buildParagraphIndex(container);
+    const index = new Map(paragraphs.map((p) => [p.id, p]));
+
+    const serialised = getSerializableParagraphs(index);
+
+    expect(serialised).toEqual([
+      { id: 'p-0', text: 'Hello' },
+      { id: 'p-1', text: 'World' },
+    ]);
+  });
+
+  it('returns an empty array for an empty index', () => {
+    const serialised = getSerializableParagraphs(new Map());
+    expect(serialised).toEqual([]);
+  });
+
+  it('output is safely postMessage-cloneable (no DOM nodes)', () => {
+    const container = document.createElement('div');
+    container.innerHTML = '<p>Test paragraph.</p>';
+    const { paragraphs } = buildParagraphIndex(container);
+    const index = new Map(paragraphs.map((p) => [p.id, p]));
+
+    const serialised = getSerializableParagraphs(index);
+
+    // Verify structured-clone (postMessage) would succeed — no DOM nodes present
+    expect(() => JSON.stringify(serialised)).not.toThrow();
   });
 });

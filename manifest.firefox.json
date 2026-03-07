@@ -35,7 +35,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "article-summarizer@browser-buddy",
-      "strict_min_version": "109.0"
+      "strict_min_version": "115.0"
     }
   },
   "icons": {

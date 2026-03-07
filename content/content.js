@@ -45,7 +45,7 @@ let _articleAvailable = false;
 
   // 4. Connect to background and check status
   _connectPort();
-  _sendToBackground({ action: 'getStatus' });
+  _sendToBackground({ action: 'getStatus', url: window.location.href });
 })();
 
 // ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ function _connectPort() {
   _port.onDisconnect.addListener(() => {
     // Consume lastError: Chrome sets it when the port closes (e.g. bfcache).
     // Not reading it triggers "Unchecked runtime.lastError" warnings.
-    void chrome.runtime.lastError;
+    void browser.runtime.lastError;
     _port = null;
   });
 }

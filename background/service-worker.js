@@ -91,7 +91,7 @@ browser.runtime.onConnect.addListener((port) => {
           await _handleFollowUp(port, tabId, msg);
           break;
         case 'getStatus':
-          await _handleGetStatus(port, tabId);
+          await _handleGetStatus(port, tabId, msg);
           break;
         default:
           port.postMessage({ type: 'error', message: `Unknown action: ${msg.action}` });
@@ -224,18 +224,41 @@ async function _handleFollowUp(port, tabId, msg) {
 
 /**
  * Handle the "getStatus" action — returns API key presence and conversation state.
+ * Also evicts any stale conversation whose URL no longer matches the current page,
+ * which handles in-tab navigation without requiring the 'tabs' permission.
  *
  * @param {chrome.runtime.Port} port
  * @param {number|null} tabId
+ * @param {Object} msg
  */
-async function _handleGetStatus(port, tabId) {
+async function _handleGetStatus(port, tabId, msg) {
+  const currentUrl = (msg && typeof msg.url === 'string' && msg.url) ? msg.url : null;
   const apiKey = await _getApiKey();
+
+  // Evict in-memory conversation if URL has changed (tab navigated to a new page).
+  if (tabId !== null && currentUrl) {
+    const conv = conversations.get(tabId);
+    if (conv && conv.url && conv.url !== currentUrl) {
+      conversations.delete(tabId);
+      _clearPersistedConversation(tabId);
+    }
+  }
+
   let hasConversation = tabId !== null && conversations.has(tabId);
   if (!hasConversation && tabId !== null) {
     // Check session storage in case the service worker restarted (MV3 lifecycle).
     const restored = await _restoreConversation(tabId);
-    hasConversation = restored !== null;
+    if (restored) {
+      // Evict restored conversation if it belongs to a different URL.
+      if (currentUrl && restored.url && restored.url !== currentUrl) {
+        conversations.delete(tabId);
+        _clearPersistedConversation(tabId);
+      } else {
+        hasConversation = true;
+      }
+    }
   }
+
   port.postMessage({
     type: 'status',
     hasApiKey: Boolean(apiKey),
@@ -262,6 +285,9 @@ async function _streamCompletion(port, apiKey, model, messages, tabId, attempt =
   const MAX_RETRIES = 3;
   const BACKOFF_BASE_MS = 1000;
 
+  // Each call gets its own controller; retries create a new one automatically.
+  const abortController = new AbortController();
+
   let response;
   try {
     response = await fetch(OPENAI_API_URL, {
@@ -276,8 +302,13 @@ async function _streamCompletion(port, apiKey, model, messages, tabId, attempt =
         stream: true,
         max_tokens: 2048,
       }),
+      signal: abortController.signal,
     });
-  } catch (_err) {
+  } catch (err) {
+    // AbortError means the port disconnected — clean exit, no user-facing message.
+    if (err.name === 'AbortError') {
+      return;
+    }
     port.postMessage({
       type: 'error',
       message: 'Connection failed. Please check your internet connection.',
@@ -322,8 +353,11 @@ async function _streamCompletion(port, apiKey, model, messages, tabId, attempt =
   try {
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      // Abort stream if the content-script port was closed (e.g. bfcache)
+      // Abort stream if the content-script port was closed (e.g. bfcache).
+      // abortController.abort() tears down the underlying HTTP connection;
+      // reader.cancel() releases the ReadableStream reader reference.
       if (port.isDisconnected && port.isDisconnected()) {
+        abortController.abort();
         reader.cancel().catch(() => {});
         break;
       }
@@ -375,6 +409,10 @@ async function _streamCompletion(port, apiKey, model, messages, tabId, attempt =
       }
     }
   } catch (err) {
+    // AbortError means the port disconnected cleanly — no user-facing message.
+    if (err.name === 'AbortError') {
+      return;
+    }
     console.error('[service-worker] Stream read error:', err);
     port.postMessage({ type: 'error', message: 'Stream interrupted. Please try again.' });
   }

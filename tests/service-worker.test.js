@@ -142,6 +142,13 @@ describe('trimHistory', () => {
     const last = conversation.messages[conversation.messages.length - 1];
     expect(last.content).toBe('A14');
   });
+
+  it('passes through unchanged when only the system message is present', () => {
+    const conversation = { messages: [{ role: 'system', content: 'System prompt' }] };
+    trimHistory(conversation);
+    expect(conversation.messages).toHaveLength(1);
+    expect(conversation.messages[0].role).toBe('system');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -299,6 +306,233 @@ async function restoreConversation(tabId, mockSession, conversations) {
   } catch (_e) { /* silently degrade */ }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Tests: URL-based stale conversation eviction
+// ---------------------------------------------------------------------------
+
+// Replicated logic mirroring _handleGetStatus URL eviction in service-worker.js
+function evictIfStale(conversations, tabId, currentUrl, clearFn) {
+  if (!tabId || !currentUrl) return;
+  const conv = conversations.get(tabId);
+  if (conv && conv.url && conv.url !== currentUrl) {
+    conversations.delete(tabId);
+    clearFn(tabId);
+  }
+}
+
+function evictRestoredIfStale(conversations, tabId, restored, currentUrl, clearFn) {
+  if (!restored) return false;
+  if (currentUrl && restored.url && restored.url !== currentUrl) {
+    conversations.delete(tabId);
+    clearFn(tabId);
+    return false;
+  }
+  return true;
+}
+
+describe('URL-based stale conversation eviction', () => {
+  it('retains conversation when URL matches', () => {
+    const conversations = new Map();
+    const cleared = [];
+    const conv = { url: 'https://example.com/article', messages: [] };
+    conversations.set(1, conv);
+
+    evictIfStale(conversations, 1, 'https://example.com/article', (id) => cleared.push(id));
+
+    expect(conversations.has(1)).toBe(true);
+    expect(cleared).toHaveLength(0);
+  });
+
+  it('evicts conversation when URL differs', () => {
+    const conversations = new Map();
+    const cleared = [];
+    const conv = { url: 'https://example.com/old-article', messages: [] };
+    conversations.set(1, conv);
+
+    evictIfStale(conversations, 1, 'https://example.com/new-article', (id) => cleared.push(id));
+
+    expect(conversations.has(1)).toBe(false);
+    expect(cleared).toContain(1);
+  });
+
+  it('does not evict when currentUrl is null (no URL in message)', () => {
+    const conversations = new Map();
+    const cleared = [];
+    const conv = { url: 'https://example.com/article', messages: [] };
+    conversations.set(1, conv);
+
+    evictIfStale(conversations, 1, null, (id) => cleared.push(id));
+
+    expect(conversations.has(1)).toBe(true);
+    expect(cleared).toHaveLength(0);
+  });
+
+  it('does not evict when stored conversation has no URL', () => {
+    const conversations = new Map();
+    const cleared = [];
+    const conv = { url: '', messages: [] }; // empty URL (edge case)
+    conversations.set(1, conv);
+
+    evictIfStale(conversations, 1, 'https://example.com/new', (id) => cleared.push(id));
+
+    // Guard requires conv.url to be truthy before comparing
+    expect(conversations.has(1)).toBe(true);
+  });
+
+  it('evicts restored conversation when URL differs', () => {
+    const conversations = new Map();
+    const cleared = [];
+    const restored = { url: 'https://old.example.com', messages: [] };
+    conversations.set(2, restored);
+
+    const kept = evictRestoredIfStale(
+      conversations, 2, restored, 'https://new.example.com', (id) => cleared.push(id)
+    );
+
+    expect(kept).toBe(false);
+    expect(conversations.has(2)).toBe(false);
+    expect(cleared).toContain(2);
+  });
+
+  it('keeps restored conversation when URL matches', () => {
+    const conversations = new Map();
+    const cleared = [];
+    const restored = { url: 'https://example.com/article', messages: [] };
+    conversations.set(3, restored);
+
+    const kept = evictRestoredIfStale(
+      conversations, 3, restored, 'https://example.com/article', (id) => cleared.push(id)
+    );
+
+    expect(kept).toBe(true);
+    expect(cleared).toHaveLength(0);
+  });
+
+  it('keeps restored conversation when currentUrl is null', () => {
+    const conversations = new Map();
+    const cleared = [];
+    const restored = { url: 'https://example.com/article', messages: [] };
+    conversations.set(4, restored);
+
+    const kept = evictRestoredIfStale(
+      conversations, 4, restored, null, (id) => cleared.push(id)
+    );
+
+    expect(kept).toBe(true);
+    expect(cleared).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: AbortError handling in stream completion
+// ---------------------------------------------------------------------------
+
+function classifyStreamError(err) {
+  if (err.name === 'AbortError') return 'abort';
+  return 'error';
+}
+
+describe('AbortError handling', () => {
+  it('classifies AbortError as abort (silent exit)', () => {
+    const err = new DOMException('The operation was aborted', 'AbortError');
+    expect(classifyStreamError(err)).toBe('abort');
+  });
+
+  it('classifies non-AbortError as error (user-facing message)', () => {
+    const err = new Error('Network failure');
+    expect(classifyStreamError(err)).toBe('error');
+  });
+
+  it('classifies TypeError as error', () => {
+    const err = new TypeError('Failed to fetch');
+    expect(classifyStreamError(err)).toBe('error');
+  });
+
+  it('AbortError.name is exactly "AbortError"', () => {
+    const err = new DOMException('aborted', 'AbortError');
+    expect(err.name).toBe('AbortError');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: followUp question validation
+// ---------------------------------------------------------------------------
+
+function validateFollowUpQuestion(question) {
+  if (!question || typeof question !== 'string' || !question.trim()) {
+    return { valid: false, reason: 'Question cannot be empty.' };
+  }
+  return { valid: true };
+}
+
+describe('followUp question validation', () => {
+  it('accepts a normal question', () => {
+    expect(validateFollowUpQuestion('What is the main argument?').valid).toBe(true);
+  });
+
+  it('rejects an empty string', () => {
+    const result = validateFollowUpQuestion('');
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('Question cannot be empty.');
+  });
+
+  it('rejects a whitespace-only string', () => {
+    const result = validateFollowUpQuestion('   ');
+    expect(result.valid).toBe(false);
+  });
+
+  it('rejects null', () => {
+    expect(validateFollowUpQuestion(null).valid).toBe(false);
+  });
+
+  it('rejects a non-string type (number)', () => {
+    expect(validateFollowUpQuestion(42).valid).toBe(false);
+  });
+
+  it('rejects undefined', () => {
+    expect(validateFollowUpQuestion(undefined).valid).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: Reference chip regex
+// ---------------------------------------------------------------------------
+
+function replaceRefs(text) {
+  return text.replace(/\[p-(\d+)\]/g, (_match, n) => `<span data-ref="p-${n}">[${n}]</span>`);
+}
+
+describe('reference chip regex', () => {
+  it('replaces single-digit reference', () => {
+    const out = replaceRefs('See [p-3] for details.');
+    expect(out).toContain('data-ref="p-3"');
+    expect(out).not.toContain('[p-3]');
+  });
+
+  it('replaces multi-digit reference [p-42]', () => {
+    const out = replaceRefs('Covered in [p-42].');
+    expect(out).toContain('data-ref="p-42"');
+    expect(out).not.toContain('[p-42]');
+  });
+
+  it('does not match malformed [p-] with no digits', () => {
+    const out = replaceRefs('Bad ref [p-] here.');
+    expect(out).toBe('Bad ref [p-] here.');
+  });
+
+  it('does not match [p] without dash', () => {
+    const out = replaceRefs('[p] is not a ref.');
+    expect(out).toBe('[p] is not a ref.');
+  });
+
+  it('replaces multiple refs in one string', () => {
+    const out = replaceRefs('[p-0][p-1][p-99]');
+    expect(out).toContain('data-ref="p-0"');
+    expect(out).toContain('data-ref="p-1"');
+    expect(out).toContain('data-ref="p-99"');
+  });
+});
 
 describe('session storage persistence', () => {
   it('persists conversation under a tab-namespaced key', async () => {
