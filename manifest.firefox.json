@@ -4,6 +4,14 @@
   "version": "0.1.0",
   "description": "Summarize any article and chat about it with AI-powered paragraph references.",
   "permissions": ["storage", "activeTab", "https://api.openai.com/*"],
+  "browser_action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    },
+    "default_title": "Article Summarizer — Settings"
+  },
   "background": {
     "scripts": ["background/service-worker.js"],
     "persistent": false

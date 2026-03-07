@@ -104,6 +104,18 @@ browser.runtime.onConnect.addListener((port) => {
 });
 
 // ---------------------------------------------------------------------------
+// Toolbar icon click — open the options page
+// ---------------------------------------------------------------------------
+
+// MV3 (Chrome): browser.action; MV2 (Firefox): browser.browserAction
+const _browserAction = browser.action || browser.browserAction;
+if (_browserAction) {
+  _browserAction.onClicked.addListener(() => {
+    browser.runtime.openOptionsPage();
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Tab lifecycle cleanup
 // ---------------------------------------------------------------------------
 
