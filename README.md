@@ -46,13 +46,13 @@ graph TD
 
 ### Component Responsibilities
 
-| Component | File | Role |
-|---|---|---|
-| Content Script | `content/content.js` | Orchestration entry point |
-| Article Extractor | `content/extractor.js` | Readability parsing + paragraph indexing + scroll/highlight |
-| Chat Widget | `content/widget.js` | Shadow DOM UI, streaming renderer, reference chips |
-| Background Worker | `background/service-worker.js` | OpenAI proxy, conversation state, streaming, retries |
-| Options Page | `options/options.js` | API key storage + validation |
+| Component         | File                           | Role                                                        |
+| ----------------- | ------------------------------ | ----------------------------------------------------------- |
+| Content Script    | `content/content.js`           | Orchestration entry point                                   |
+| Article Extractor | `content/extractor.js`         | Readability parsing + paragraph indexing + scroll/highlight |
+| Chat Widget       | `content/widget.js`            | Shadow DOM UI, streaming renderer, reference chips          |
+| Background Worker | `background/service-worker.js` | OpenAI proxy, conversation state, streaming, retries        |
+| Options Page      | `options/options.js`           | API key storage + validation                                |
 
 ---
 
@@ -131,17 +131,18 @@ Article text is sent to OpenAI using **your own API key** under [OpenAI's privac
 
 ## Vendored Libraries
 
-| Library | Version | License |
-|---|---|---|
-| [Mozilla Readability](https://github.com/mozilla/readability) | latest | Apache 2.0 |
-| [marked.js](https://marked.js.org) | latest | MIT |
-| [DOMPurify](https://github.com/cure53/DOMPurify) | latest | Apache 2.0 / MPL 2.0 |
+| Library                                                       | Version | License              |
+| ------------------------------------------------------------- | ------- | -------------------- |
+| [Mozilla Readability](https://github.com/mozilla/readability) | latest  | Apache 2.0           |
+| [marked.js](https://marked.js.org)                            | latest  | MIT                  |
+| [DOMPurify](https://github.com/cure53/DOMPurify)              | latest  | Apache 2.0 / MPL 2.0 |
 
 ---
 
 ## Roadmap
 
 See [CHANGELOG.md](CHANGELOG.md). Planned features:
+
 - Reference tooltip on hover (paragraph preview)
 - Draggable/resizable panel
 - Dark mode (follows system preference)

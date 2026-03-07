@@ -33,7 +33,9 @@ function buildParagraphIndex(container) {
   let node;
   while ((node = walker.nextNode())) {
     const text = (node.textContent || '').trim();
-    if (!text) { continue; }
+    if (!text) {
+      continue;
+    }
 
     const id = `p-${paragraphs.length}`;
     const charStart = charOffset;
@@ -50,7 +52,9 @@ function buildParagraphIndex(container) {
   }
 
   let fullText = textParts.join('\n');
-  if (truncated) { fullText += '\n\n[Note: Article was truncated to fit within the context limit.]'; }
+  if (truncated) {
+    fullText += '\n\n[Note: Article was truncated to fit within the context limit.]';
+  }
   return { paragraphs, fullText, truncated };
 }
 

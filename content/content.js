@@ -152,13 +152,17 @@ function _handleStatusResponse(msg) {
  */
 function _handleSummarize() {
   if (!_articleAvailable) {
-    appendErrorMessage("Couldn't extract an article from this page. Try on a news article or blog post.");
+    appendErrorMessage(
+      "Couldn't extract an article from this page. Try on a news article or blog post."
+    );
     return;
   }
 
   const article = extractArticle();
   if (!article) {
-    appendErrorMessage("Couldn't extract article content. The page may be behind a paywall or dynamically loaded.");
+    appendErrorMessage(
+      "Couldn't extract article content. The page may be behind a paywall or dynamically loaded."
+    );
     return;
   }
 

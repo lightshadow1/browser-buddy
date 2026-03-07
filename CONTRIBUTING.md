@@ -28,11 +28,13 @@ node build.js
 ## Loading the Extension Locally
 
 **Chrome:**
+
 1. Go to `chrome://extensions`
 2. Enable **Developer Mode** (top right)
 3. Click **Load unpacked** → select `dist/chrome/`
 
 **Firefox:**
+
 1. Go to `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on** → select `dist/firefox/manifest.json`
 
@@ -70,6 +72,7 @@ article-summarizer/
 ## Reporting Issues
 
 Use the GitHub issue templates:
+
 - **Bug report:** Include browser + version, steps to reproduce, expected vs actual behaviour
 - **Feature request:** Describe the use case and proposed solution
 

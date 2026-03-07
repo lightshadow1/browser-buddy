@@ -3,11 +3,7 @@
   "name": "Article Summarizer",
   "version": "0.1.0",
   "description": "Summarize any article and chat about it with AI-powered paragraph references.",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "https://api.openai.com/*"
-  ],
+  "permissions": ["storage", "activeTab", "https://api.openai.com/*"],
   "background": {
     "scripts": ["background/service-worker.js"],
     "persistent": false

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -18,9 +18,11 @@
           <section class="card">
             <h2>OpenAI API Key</h2>
             <p class="hint">
-              Your API key is stored locally on this device only and is never shared.
-              Get a key at
-              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
+              Your API key is stored locally on this device only and is never shared. Get a key at
+              <a
+                href="https://platform.openai.com/api-keys"
+                target="_blank"
+                rel="noopener noreferrer"
                 >platform.openai.com</a
               >.
             </p>
@@ -37,7 +39,12 @@
                   spellcheck="false"
                   aria-describedby="api-key-hint api-key-status"
                 />
-                <button type="button" id="toggle-visibility" aria-label="Show API key" title="Show/hide">
+                <button
+                  type="button"
+                  id="toggle-visibility"
+                  aria-label="Show API key"
+                  title="Show/hide"
+                >
                   👁
                 </button>
               </div>
@@ -52,10 +59,14 @@
             <div class="field">
               <label for="model">Default Model</label>
               <select id="model" name="model" aria-describedby="model-hint">
-                <option value="gpt-4o-mini">gpt-4o-mini (recommended — fast &amp; affordable)</option>
+                <option value="gpt-4o-mini">
+                  gpt-4o-mini (recommended — fast &amp; affordable)
+                </option>
                 <option value="gpt-4o">gpt-4o (more capable, higher cost)</option>
               </select>
-              <p id="model-hint" class="field-hint">Used for all article summaries and follow-up questions.</p>
+              <p id="model-hint" class="field-hint">
+                Used for all article summaries and follow-up questions.
+              </p>
             </div>
           </section>
 
@@ -68,7 +79,10 @@
       <footer>
         <p>
           Article Summarizer v0.1.0 —
-          <a href="https://github.com/browser-buddy/article-summarizer" target="_blank" rel="noopener noreferrer"
+          <a
+            href="https://github.com/browser-buddy/article-summarizer"
+            target="_blank"
+            rel="noopener noreferrer"
             >GitHub</a
           >
         </p>

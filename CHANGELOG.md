@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-03-06
 
 ### Added
+
 - Floating chat widget injected via shadow DOM (isolated from host page styles)
 - Article extraction using Mozilla Readability with paragraph-level indexing
 - Summarize action: streams GPT-4o-mini response with `[p-N]` references

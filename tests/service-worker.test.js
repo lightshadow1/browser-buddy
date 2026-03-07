@@ -22,8 +22,12 @@ function trimHistory(conversation) {
 }
 
 function validateMessage(msg) {
-  if (!msg || typeof msg !== 'object') { return false; }
-  if (typeof msg.action !== 'string') { return false; }
+  if (!msg || typeof msg !== 'object') {
+    return false;
+  }
+  if (typeof msg.action !== 'string') {
+    return false;
+  }
   return ['summarize', 'followUp', 'getStatus'].includes(msg.action);
 }
 
@@ -43,13 +47,19 @@ function parseSseChunks(raw) {
   const deltas = [];
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed.startsWith('data: ')) { continue; }
+    if (!trimmed.startsWith('data: ')) {
+      continue;
+    }
     const jsonStr = trimmed.slice(6);
-    if (jsonStr === '[DONE]') { continue; }
+    if (jsonStr === '[DONE]') {
+      continue;
+    }
     try {
       const parsed = JSON.parse(jsonStr);
       const delta = parsed.choices?.[0]?.delta?.content;
-      if (delta) { deltas.push(delta); }
+      if (delta) {
+        deltas.push(delta);
+      }
     } catch (_e) {
       // skip malformed
     }
@@ -209,11 +219,7 @@ describe('parseSseChunks', () => {
   });
 
   it('ignores non-data lines', () => {
-    const raw = [
-      ': ping',
-      '',
-      'data: {"choices":[{"delta":{"content":"chunk"}}]}',
-    ].join('\n');
+    const raw = [': ping', '', 'data: {"choices":[{"delta":{"content":"chunk"}}]}'].join('\n');
     expect(parseSseChunks(raw)).toEqual(['chunk']);
   });
 
@@ -223,10 +229,9 @@ describe('parseSseChunks', () => {
   });
 
   it('handles malformed JSON gracefully', () => {
-    const raw = [
-      'data: {not valid json}',
-      'data: {"choices":[{"delta":{"content":"ok"}}]}',
-    ].join('\n');
+    const raw = ['data: {not valid json}', 'data: {"choices":[{"delta":{"content":"ok"}}]}'].join(
+      '\n'
+    );
     expect(parseSseChunks(raw)).toEqual(['ok']);
   });
 
@@ -244,27 +249,39 @@ describe('HTTP error handling', () => {
   it('maps status 401 to invalid API key message', () => {
     const status = 401;
     let message;
-    if (status === 401) { message = 'Invalid API key. Please check your settings.'; }
-    else if (status === 429) { message = 'Rate limit exceeded.'; }
-    else if (status >= 500) { message = 'Server error.'; }
+    if (status === 401) {
+      message = 'Invalid API key. Please check your settings.';
+    } else if (status === 429) {
+      message = 'Rate limit exceeded.';
+    } else if (status >= 500) {
+      message = 'Server error.';
+    }
     expect(message).toBe('Invalid API key. Please check your settings.');
   });
 
   it('maps status 429 to rate limit message', () => {
     const status = 429;
     let message;
-    if (status === 401) { message = 'Invalid API key. Please check your settings.'; }
-    else if (status === 429) { message = 'Rate limit exceeded.'; }
-    else if (status >= 500) { message = 'Server error.'; }
+    if (status === 401) {
+      message = 'Invalid API key. Please check your settings.';
+    } else if (status === 429) {
+      message = 'Rate limit exceeded.';
+    } else if (status >= 500) {
+      message = 'Server error.';
+    }
     expect(message).toBe('Rate limit exceeded.');
   });
 
   it('maps 5xx to server error', () => {
     const status = 503;
     let message;
-    if (status === 401) { message = 'Invalid API key.'; }
-    else if (status === 429) { message = 'Rate limit.'; }
-    else if (status >= 500) { message = 'Server error.'; }
+    if (status === 401) {
+      message = 'Invalid API key.';
+    } else if (status === 429) {
+      message = 'Rate limit.';
+    } else if (status >= 500) {
+      message = 'Server error.';
+    }
     expect(message).toBe('Server error.');
   });
 });
@@ -288,14 +305,20 @@ describe('exponential backoff', () => {
 
 // Replicated helpers — mirror the logic in background/service-worker.js
 async function persistConversation(tabId, conversation, mockSession) {
-  if (!tabId || !mockSession) return;
+  if (!tabId || !mockSession) {
+    return;
+  }
   try {
     await mockSession.set({ [`conv_${tabId}`]: conversation });
-  } catch (_e) { /* silently degrade */ }
+  } catch (_e) {
+    /* silently degrade */
+  }
 }
 
 async function restoreConversation(tabId, mockSession, conversations) {
-  if (!tabId || !mockSession) return null;
+  if (!tabId || !mockSession) {
+    return null;
+  }
   try {
     const result = await mockSession.get(`conv_${tabId}`);
     const conv = result[`conv_${tabId}`];
@@ -303,7 +326,9 @@ async function restoreConversation(tabId, mockSession, conversations) {
       conversations.set(tabId, conv);
       return conv;
     }
-  } catch (_e) { /* silently degrade */ }
+  } catch (_e) {
+    /* silently degrade */
+  }
   return null;
 }
 
@@ -313,7 +338,9 @@ async function restoreConversation(tabId, mockSession, conversations) {
 
 // Replicated logic mirroring _handleGetStatus URL eviction in service-worker.js
 function evictIfStale(conversations, tabId, currentUrl, clearFn) {
-  if (!tabId || !currentUrl) return;
+  if (!tabId || !currentUrl) {
+    return;
+  }
   const conv = conversations.get(tabId);
   if (conv && conv.url && conv.url !== currentUrl) {
     conversations.delete(tabId);
@@ -322,7 +349,9 @@ function evictIfStale(conversations, tabId, currentUrl, clearFn) {
 }
 
 function evictRestoredIfStale(conversations, tabId, restored, currentUrl, clearFn) {
-  if (!restored) return false;
+  if (!restored) {
+    return false;
+  }
   if (currentUrl && restored.url && restored.url !== currentUrl) {
     conversations.delete(tabId);
     clearFn(tabId);
@@ -386,8 +415,8 @@ describe('URL-based stale conversation eviction', () => {
     const restored = { url: 'https://old.example.com', messages: [] };
     conversations.set(2, restored);
 
-    const kept = evictRestoredIfStale(
-      conversations, 2, restored, 'https://new.example.com', (id) => cleared.push(id)
+    const kept = evictRestoredIfStale(conversations, 2, restored, 'https://new.example.com', (id) =>
+      cleared.push(id)
     );
 
     expect(kept).toBe(false);
@@ -402,7 +431,11 @@ describe('URL-based stale conversation eviction', () => {
     conversations.set(3, restored);
 
     const kept = evictRestoredIfStale(
-      conversations, 3, restored, 'https://example.com/article', (id) => cleared.push(id)
+      conversations,
+      3,
+      restored,
+      'https://example.com/article',
+      (id) => cleared.push(id)
     );
 
     expect(kept).toBe(true);
@@ -415,9 +448,7 @@ describe('URL-based stale conversation eviction', () => {
     const restored = { url: 'https://example.com/article', messages: [] };
     conversations.set(4, restored);
 
-    const kept = evictRestoredIfStale(
-      conversations, 4, restored, null, (id) => cleared.push(id)
-    );
+    const kept = evictRestoredIfStale(conversations, 4, restored, null, (id) => cleared.push(id));
 
     expect(kept).toBe(true);
     expect(cleared).toHaveLength(0);
@@ -429,7 +460,9 @@ describe('URL-based stale conversation eviction', () => {
 // ---------------------------------------------------------------------------
 
 function classifyStreamError(err) {
-  if (err.name === 'AbortError') return 'abort';
+  if (err.name === 'AbortError') {
+    return 'abort';
+  }
   return 'error';
 }
 
@@ -538,19 +571,21 @@ describe('session storage persistence', () => {
   it('persists conversation under a tab-namespaced key', async () => {
     const stored = {};
     const mockSession = {
-      set: jest.fn(async (obj) => { Object.assign(stored, obj); }),
+      set: jest.fn(async (obj) => {
+        Object.assign(stored, obj);
+      }),
     };
     const conv = { tabId: 42, messages: [{ role: 'system', content: 'sys' }] };
 
     await persistConversation(42, conv, mockSession);
 
-    expect(mockSession.set).toHaveBeenCalledWith({ 'conv_42': conv });
+    expect(mockSession.set).toHaveBeenCalledWith({ conv_42: conv });
     expect(stored['conv_42']).toEqual(conv);
   });
 
   it('restores conversation from session storage on cache miss', async () => {
     const mockConv = { tabId: 7, messages: [{ role: 'system', content: 'sys' }] };
-    const sessionStore = { 'conv_7': mockConv };
+    const sessionStore = { conv_7: mockConv };
     const mockSession = {
       get: jest.fn(async (key) => ({ [key]: sessionStore[key] })),
     };
@@ -584,7 +619,9 @@ describe('session storage persistence', () => {
 
   it('handles storage.get throwing gracefully and returns null', async () => {
     const mockSession = {
-      get: jest.fn(async () => { throw new Error('quota exceeded'); }),
+      get: jest.fn(async () => {
+        throw new Error('quota exceeded');
+      }),
     };
     const result = await restoreConversation(42, mockSession, new Map());
     expect(result).toBeNull();
@@ -592,7 +629,9 @@ describe('session storage persistence', () => {
 
   it('handles storage.set throwing gracefully without propagating', async () => {
     const mockSession = {
-      set: jest.fn(async () => { throw new Error('storage full'); }),
+      set: jest.fn(async () => {
+        throw new Error('storage full');
+      }),
     };
     await expect(persistConversation(1, { messages: [] }, mockSession)).resolves.toBeUndefined();
   });

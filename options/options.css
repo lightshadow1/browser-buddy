@@ -1,19 +1,25 @@
 /* options.css — Settings page styles */
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 :root {
-  --color-primary:       #4f46e5;
+  --color-primary: #4f46e5;
   --color-primary-hover: #4338ca;
-  --color-bg:            #f9fafb;
-  --color-card:          #ffffff;
-  --color-border:        #e5e7eb;
-  --color-text:          #111827;
-  --color-muted:         #6b7280;
-  --color-success:       #16a34a;
-  --color-error:         #dc2626;
-  --color-warning-bg:    #fefce8;
-  --radius:              8px;
+  --color-bg: #f9fafb;
+  --color-card: #ffffff;
+  --color-border: #e5e7eb;
+  --color-text: #111827;
+  --color-muted: #6b7280;
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+  --color-warning-bg: #fefce8;
+  --radius: 8px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -74,7 +80,9 @@ header .subtitle {
   text-decoration: none;
 }
 
-.hint a:hover { text-decoration: underline; }
+.hint a:hover {
+  text-decoration: underline;
+}
 
 /* Fields */
 .field {
@@ -93,8 +101,8 @@ label {
   gap: 8px;
 }
 
-input[type="password"],
-input[type="text"],
+input[type='password'],
+input[type='text'],
 select {
   width: 100%;
   padding: 8px 12px;
@@ -109,9 +117,10 @@ select {
   min-height: 38px;
 }
 
-input:focus, select:focus {
+input:focus,
+select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
 #toggle-visibility {
@@ -126,7 +135,9 @@ input:focus, select:focus {
   transition: background 0.12s;
 }
 
-#toggle-visibility:hover { background: var(--color-border); }
+#toggle-visibility:hover {
+  background: var(--color-border);
+}
 
 .field-hint {
   font-size: 12px;
@@ -135,7 +146,7 @@ input:focus, select:focus {
 
 .field-hint code {
   font-family: 'Menlo', 'Consolas', monospace;
-  background: rgba(0,0,0,0.06);
+  background: rgba(0, 0, 0, 0.06);
   padding: 1px 4px;
   border-radius: 3px;
 }
@@ -146,10 +157,18 @@ input:focus, select:focus {
   min-height: 20px;
 }
 
-.status.success { color: var(--color-success); }
-.status.error   { color: var(--color-error); }
-.status.loading { color: var(--color-muted); }
-.status code    { font-family: 'Menlo', 'Consolas', monospace; }
+.status.success {
+  color: var(--color-success);
+}
+.status.error {
+  color: var(--color-error);
+}
+.status.loading {
+  color: var(--color-muted);
+}
+.status code {
+  font-family: 'Menlo', 'Consolas', monospace;
+}
 
 /* Actions */
 .actions {
@@ -157,7 +176,7 @@ input:focus, select:focus {
   justify-content: flex-end;
 }
 
-button[type="submit"] {
+button[type='submit'] {
   background: var(--color-primary);
   color: #fff;
   border: none;
@@ -170,12 +189,14 @@ button[type="submit"] {
   transition: background 0.12s;
 }
 
-button[type="submit"]:hover { background: var(--color-primary-hover); }
-button[type="submit"]:focus-visible {
+button[type='submit']:hover {
+  background: var(--color-primary-hover);
+}
+button[type='submit']:focus-visible {
   outline: 3px solid var(--color-primary);
   outline-offset: 2px;
 }
-button[type="submit"]:disabled {
+button[type='submit']:disabled {
   background: #9ca3af;
   cursor: not-allowed;
 }
@@ -192,11 +213,15 @@ footer a {
   text-decoration: none;
 }
 
-footer a:hover { text-decoration: underline; }
+footer a:hover {
+  text-decoration: underline;
+}
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     transition-duration: 0.01ms !important;
   }
 }

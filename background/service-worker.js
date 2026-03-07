@@ -232,7 +232,7 @@ async function _handleFollowUp(port, tabId, msg) {
  * @param {Object} msg
  */
 async function _handleGetStatus(port, tabId, msg) {
-  const currentUrl = (msg && typeof msg.url === 'string' && msg.url) ? msg.url : null;
+  const currentUrl = msg && typeof msg.url === 'string' && msg.url ? msg.url : null;
   const apiKey = await _getApiKey();
 
   // Evict in-memory conversation if URL has changed (tab navigated to a new page).
@@ -492,7 +492,9 @@ async function _getApiKey() {
  * @returns {Promise<void>}
  */
 async function _persistConversation(tabId, conversation) {
-  if (!tabId || !browser.storage || !browser.storage.session) return;
+  if (!tabId || !browser.storage || !browser.storage.session) {
+    return;
+  }
   try {
     await browser.storage.session.set({ [`conv_${tabId}`]: conversation });
   } catch (_e) {
@@ -508,7 +510,9 @@ async function _persistConversation(tabId, conversation) {
  * @returns {Promise<Conversation|null>}
  */
 async function _restoreConversation(tabId) {
-  if (!tabId || !browser.storage || !browser.storage.session) return null;
+  if (!tabId || !browser.storage || !browser.storage.session) {
+    return null;
+  }
   try {
     const result = await browser.storage.session.get(`conv_${tabId}`);
     const conv = result[`conv_${tabId}`];
@@ -528,7 +532,9 @@ async function _restoreConversation(tabId) {
  * @param {number} tabId
  */
 function _clearPersistedConversation(tabId) {
-  if (!browser.storage || !browser.storage.session) return;
+  if (!browser.storage || !browser.storage.session) {
+    return;
+  }
   browser.storage.session.remove(`conv_${tabId}`).catch(() => {});
 }
 

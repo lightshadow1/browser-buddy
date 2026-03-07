@@ -25,7 +25,9 @@
   },
   "jest": {
     "testEnvironment": "jsdom",
-    "testMatch": ["**/tests/**/*.test.js"],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
     "collectCoverageFrom": [
       "content/**/*.js",
       "background/**/*.js",

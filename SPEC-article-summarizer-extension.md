@@ -55,11 +55,11 @@ A browser extension that injects a floating chatbot widget onto any webpage. Use
 
 ### Component Responsibilities
 
-| Component | Role |
-|-----------|------|
-| **Content Script** | Extracts article, renders chat widget, handles reference clicks |
+| Component             | Role                                                                 |
+| --------------------- | -------------------------------------------------------------------- |
+| **Content Script**    | Extracts article, renders chat widget, handles reference clicks      |
 | **Background Worker** | Proxies OpenAI calls, manages API key securely, tracks conversations |
-| **Options Page** | User enters/updates their OpenAI API key |
+| **Options Page**      | User enters/updates their OpenAI API key                             |
 
 ---
 
@@ -101,32 +101,35 @@ article-summarizer/
   "version": "0.1.0",
   "description": "Summarize any article and chat about it with AI-powered references.",
   "permissions": [
-    "storage",         // API key + settings
-    "activeTab"        // Access current tab on user action
+    "storage", // API key + settings
+    "activeTab", // Access current tab on user action
   ],
-  "host_permissions": [
-    "https://api.openai.com/*"
-  ],
+  "host_permissions": ["https://api.openai.com/*"],
   "background": {
-    "service_worker": "background/service-worker.js"
+    "service_worker": "background/service-worker.js",
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/readability.js", "content/extractor.js", "content/widget.js", "content/content.js"],
-      "css": [],          // CSS injected via shadow DOM, not here
-      "run_at": "document_idle"
-    }
+      "js": [
+        "lib/readability.js",
+        "content/extractor.js",
+        "content/widget.js",
+        "content/content.js",
+      ],
+      "css": [], // CSS injected via shadow DOM, not here
+      "run_at": "document_idle",
+    },
   ],
   "options_ui": {
     "page": "options/options.html",
-    "open_in_tab": false
+    "open_in_tab": false,
   },
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
-  }
+    "128": "icons/icon-128.png",
+  },
 }
 ```
 
@@ -144,10 +147,10 @@ article-summarizer/
 // --- Types ---
 
 interface IndexedParagraph {
-  id: string;              // "p-0", "p-1", etc.
-  text: string;            // Plain text content
-  element: HTMLElement;     // Reference to original DOM node
-  charStart: number;       // Character offset in full article text
+  id: string; // "p-0", "p-1", etc.
+  text: string; // Plain text content
+  element: HTMLElement; // Reference to original DOM node
+  charStart: number; // Character offset in full article text
   charEnd: number;
 }
 
@@ -156,27 +159,28 @@ interface ExtractionResult {
   byline: string | null;
   siteName: string | null;
   url: string;
-  fullText: string;                    // Concatenated plain text
-  paragraphs: IndexedParagraph[];      // Indexed paragraphs
-  extractedAt: string;                 // ISO timestamp
+  fullText: string; // Concatenated plain text
+  paragraphs: IndexedParagraph[]; // Indexed paragraphs
+  extractedAt: string; // ISO timestamp
 }
 
 // --- Public API ---
 
-function extractArticle(): ExtractionResult | null
+function extractArticle(): ExtractionResult | null;
 // Uses Mozilla Readability on a cloned document.
 // Walks the Readability output DOM and indexes every <p>, <li>, <blockquote>,
 // <h1>-<h6> as a paragraph. Assigns sequential IDs.
 // Returns null if Readability fails (non-article page).
 
-function scrollToReference(paragraphId: string): void
+function scrollToReference(paragraphId: string): void;
 // Scrolls the original page to the matched paragraph element.
 // Adds a brief highlight animation (CSS class toggle, 2s fade).
 
-function getParagraphById(id: string): IndexedParagraph | null
+function getParagraphById(id: string): IndexedParagraph | null;
 ```
 
 **Key decisions:**
+
 - Use Mozilla's Readability.js (MIT licensed, same as Firefox Reader View)
 - Clone the document before parsing (Readability mutates DOM)
 - Index granularity = block-level elements (not sentences) — simpler, more reliable
@@ -228,16 +232,16 @@ function getParagraphById(id: string): IndexedParagraph | null
 
 #### Behavior
 
-| Action | Result |
-|--------|--------|
-| Click FAB | Toggle panel open/close |
-| Click "Summarize" button | Extract article → send to background → stream summary |
-| Type + Enter | Send follow-up question to background |
+| Action                     | Result                                                      |
+| -------------------------- | ----------------------------------------------------------- |
+| Click FAB                  | Toggle panel open/close                                     |
+| Click "Summarize" button   | Extract article → send to background → stream summary       |
+| Type + Enter               | Send follow-up question to background                       |
 | Click `[1]` reference chip | Call `scrollToReference("p-3")` → page scrolls + highlights |
-| Hover reference chip | Tooltip shows paragraph preview (first 100 chars) |
-| Click `✕` | Close panel (FAB remains) |
-| Click `─` | Minimize to FAB |
-| Drag header | Reposition panel (persist position in session) |
+| Hover reference chip       | Tooltip shows paragraph preview (first 100 chars)           |
+| Click `✕`                  | Close panel (FAB remains)                                   |
+| Click `─`                  | Minimize to FAB                                             |
+| Drag header                | Reposition panel (persist position in session)              |
 
 #### Technical Requirements
 
@@ -258,15 +262,15 @@ function getParagraphById(id: string): IndexedParagraph | null
 // --- Types ---
 
 interface Message {
-  role: "system" | "user" | "assistant";
+  role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
 interface Conversation {
   tabId: number;
   url: string;
-  articleText: string;          // Extracted article (truncated)
-  paragraphs: { id: string; text: string }[];  // For reference mapping
+  articleText: string; // Extracted article (truncated)
+  paragraphs: { id: string; text: string }[]; // For reference mapping
   messages: Message[];
 }
 
@@ -299,6 +303,7 @@ Stream:   true (SSE)
 ```
 
 **Request flow:**
+
 1. Content script sends message to background
 2. Background opens persistent connection (port) for streaming
 3. Background calls OpenAI with `stream: true`
@@ -307,15 +312,16 @@ Stream:   true (SSE)
 
 **Error handling:**
 
-| Error | Action |
-|-------|--------|
-| 401 Unauthorized | Tell user: "Invalid API key. Check settings." |
-| 429 Rate limit | Retry with exponential backoff (max 3 retries, 1s/2s/4s) |
-| 500+ Server error | Retry once, then show error message |
-| Network error | Show "Connection failed. Check your internet." |
-| Context too long | Truncate article, retry. Inform user content was trimmed. |
+| Error             | Action                                                    |
+| ----------------- | --------------------------------------------------------- |
+| 401 Unauthorized  | Tell user: "Invalid API key. Check settings."             |
+| 429 Rate limit    | Retry with exponential backoff (max 3 retries, 1s/2s/4s)  |
+| 500+ Server error | Retry once, then show error message                       |
+| Network error     | Show "Connection failed. Check your internet."            |
+| Context too long  | Truncate article, retry. Inform user content was trimmed. |
 
 **Token budget:**
+
 - System prompt: ~500 tokens
 - Article content: ~12,000 tokens max
 - Conversation history: keep last 10 message pairs, drop oldest
@@ -329,10 +335,10 @@ Simple single-page settings UI.
 
 **Fields:**
 
-| Field | Type | Storage Key | Validation |
-|-------|------|-------------|------------|
-| OpenAI API Key | password input | `openai_api_key` | Starts with `sk-`, non-empty |
-| Model | select (future) | `openai_model` | Enum: `gpt-4o-mini`, `gpt-4o` |
+| Field          | Type            | Storage Key      | Validation                    |
+| -------------- | --------------- | ---------------- | ----------------------------- |
+| OpenAI API Key | password input  | `openai_api_key` | Starts with `sk-`, non-empty  |
+| Model          | select (future) | `openai_model`   | Enum: `gpt-4o-mini`, `gpt-4o` |
 
 **Storage:** Use `chrome.storage.local` (not sync — API keys shouldn't sync across devices).
 
@@ -424,13 +430,13 @@ This is the core differentiator. Every AI response must ground claims in the sou
 
 ### Strategy: Single codebase, build-time manifest swap
 
-| Feature | Chrome (MV3) | Firefox |
-|---------|-------------|---------|
-| Manifest | `manifest_version: 3` | `manifest_version: 2` (more stable) |
-| Background | `service_worker` | `background.scripts` (persistent) |
-| API namespace | `chrome.*` | `browser.*` (Promise-based) |
-| Storage | `chrome.storage.local` | `browser.storage.local` |
-| Streaming | Port via `chrome.runtime.connect` | Same API, different namespace |
+| Feature       | Chrome (MV3)                      | Firefox                             |
+| ------------- | --------------------------------- | ----------------------------------- |
+| Manifest      | `manifest_version: 3`             | `manifest_version: 2` (more stable) |
+| Background    | `service_worker`                  | `background.scripts` (persistent)   |
+| API namespace | `chrome.*`                        | `browser.*` (Promise-based)         |
+| Storage       | `chrome.storage.local`            | `browser.storage.local`             |
+| Streaming     | Port via `chrome.runtime.connect` | Same API, different namespace       |
 
 ### Compatibility Shim (top of each file)
 
@@ -443,6 +449,7 @@ This one-liner covers 90% of API differences. For the remaining edge cases (serv
 ### Build Script (`build.js`)
 
 A simple Node script (no bundler for MVP):
+
 1. Copy all files to `dist/chrome/` and `dist/firefox/`
 2. For Firefox: replace `manifest.json` with Firefox-compatible version
 3. For Firefox: wrap service worker as a background script
@@ -508,13 +515,13 @@ Paragraph highlighted for 2s (CSS animation)
 
 ## 10. Security Considerations
 
-| Concern | Mitigation |
-|---------|------------|
-| API key exposure | Stored in `chrome.storage.local`, never injected into page context. All API calls from background worker only. |
-| XSS via AI response | Sanitize AI markdown output before injecting into shadow DOM. Allowlist: `<b>`, `<i>`, `<ul>`, `<li>`, `<p>`, `<code>`, `<span>`. Strip everything else. |
-| Host page interference | Shadow DOM isolates widget. No global CSS leaks in or out. |
-| Content script permissions | Use `activeTab` — only activates on user interaction, not passively on all pages. |
-| OpenAI data policy | User's own API key = user's own data relationship with OpenAI. Note this in README. |
+| Concern                    | Mitigation                                                                                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API key exposure           | Stored in `chrome.storage.local`, never injected into page context. All API calls from background worker only.                                           |
+| XSS via AI response        | Sanitize AI markdown output before injecting into shadow DOM. Allowlist: `<b>`, `<i>`, `<ul>`, `<li>`, `<p>`, `<code>`, `<span>`. Strip everything else. |
+| Host page interference     | Shadow DOM isolates widget. No global CSS leaks in or out.                                                                                               |
+| Content script permissions | Use `activeTab` — only activates on user interaction, not passively on all pages.                                                                        |
+| OpenAI data policy         | User's own API key = user's own data relationship with OpenAI. Note this in README.                                                                      |
 
 ---
 
@@ -560,50 +567,50 @@ This is the interface third-party devs will implement. Not built in MVP, but the
 ```ts
 interface SummaryConnector {
   // Metadata
-  id: string;                    // e.g., "notion", "google-drive"
-  name: string;                  // Display name
-  icon: string;                  // Data URI or URL
+  id: string; // e.g., "notion", "google-drive"
+  name: string; // Display name
+  icon: string; // Data URI or URL
   version: string;
 
   // Lifecycle
   initialize(): Promise<void>;
   isAuthenticated(): Promise<boolean>;
-  authenticate(): Promise<void>;  // Handle OAuth / API key
+  authenticate(): Promise<void>; // Handle OAuth / API key
 
   // Core action
   save(payload: SummaryPayload): Promise<SaveResult>;
 }
 
 interface SummaryPayload {
-  title: string;                 // Article title
-  url: string;                   // Source URL
-  summary: string;               // Markdown summary
-  chat: ChatMessage[];           // Full conversation
-  references: Reference[];       // Paragraph references used
-  extractedAt: string;           // ISO timestamp
+  title: string; // Article title
+  url: string; // Source URL
+  summary: string; // Markdown summary
+  chat: ChatMessage[]; // Full conversation
+  references: Reference[]; // Paragraph references used
+  extractedAt: string; // ISO timestamp
 }
 
 interface Reference {
-  id: string;                    // "p-3"
-  text: string;                  // Paragraph content
-  usedInMessages: number[];      // Which message indices cited this
+  id: string; // "p-3"
+  text: string; // Paragraph content
+  usedInMessages: number[]; // Which message indices cited this
 }
 
 interface SaveResult {
   success: boolean;
-  link?: string;                 // URL to saved item (e.g., Notion page)
+  link?: string; // URL to saved item (e.g., Notion page)
   error?: string;
 }
 ```
 
 ### Connector Notes
 
-| Target | Auth Method | Save Format | Notes |
-|--------|------------|-------------|-------|
-| Notion | OAuth 2.0 | Create page via API | Needs Notion integration setup |
-| Google Drive | OAuth 2.0 | Create Google Doc or .md file | Use Google Drive API v3 |
-| Obsidian | None (local) | Write .md file via Obsidian URI (`obsidian://new`) | No server needed, uses URI scheme |
-| Webhook | None | POST JSON to user-configured URL | Simplest connector, good template |
+| Target       | Auth Method  | Save Format                                        | Notes                             |
+| ------------ | ------------ | -------------------------------------------------- | --------------------------------- |
+| Notion       | OAuth 2.0    | Create page via API                                | Needs Notion integration setup    |
+| Google Drive | OAuth 2.0    | Create Google Doc or .md file                      | Use Google Drive API v3           |
+| Obsidian     | None (local) | Write .md file via Obsidian URI (`obsidian://new`) | No server needed, uses URI scheme |
+| Webhook      | None         | POST JSON to user-configured URL                   | Simplest connector, good template |
 
 ---
 
@@ -638,11 +645,11 @@ interface SaveResult {
 
 ## 14. Dependencies
 
-| Package | Version | Purpose | License |
-|---------|---------|---------|---------|
-| Readability.js | latest | Article extraction | Apache 2.0 |
-| marked.js (optional) | latest | Markdown → HTML in chat | MIT |
-| DOMPurify (optional) | latest | Sanitize HTML output | Apache 2.0 / MPL 2.0 |
+| Package              | Version | Purpose                 | License              |
+| -------------------- | ------- | ----------------------- | -------------------- |
+| Readability.js       | latest  | Article extraction      | Apache 2.0           |
+| marked.js (optional) | latest  | Markdown → HTML in chat | MIT                  |
+| DOMPurify (optional) | latest  | Sanitize HTML output    | Apache 2.0 / MPL 2.0 |
 
 **Zero build-time dependencies for MVP.** All libraries vendored (copied into `lib/`). No webpack, no npm at runtime. A simple copy-and-zip build.
 

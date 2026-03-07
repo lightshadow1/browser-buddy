@@ -78,10 +78,7 @@ function buildTarget(browser) {
   if (browser === 'chrome') {
     fs.copyFileSync(path.join(ROOT, 'manifest.json'), path.join(outDir, 'manifest.json'));
   } else {
-    fs.copyFileSync(
-      path.join(ROOT, 'manifest.firefox.json'),
-      path.join(outDir, 'manifest.json')
-    );
+    fs.copyFileSync(path.join(ROOT, 'manifest.firefox.json'), path.join(outDir, 'manifest.json'));
   }
 
   console.log(`✓ Built ${browser} → dist/${browser}/`);
