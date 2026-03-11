@@ -567,6 +567,68 @@ describe('reference chip regex', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Tests: validateKey handler
+// ---------------------------------------------------------------------------
+
+/**
+ * Replicates _handleValidateKey from service-worker.js.
+ * Accepts an injectable mockFetch so we can test without real network calls.
+ */
+async function validateKeyHandler(key, mockFetch) {
+  if (!key || typeof key !== 'string') {
+    return { valid: false };
+  }
+  try {
+    const response = await mockFetch('https://api.openai.com/v1/models', {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    return { valid: response.ok };
+  } catch (_err) {
+    return { valid: false };
+  }
+}
+
+describe('validateKey handler', () => {
+  it('returns { valid: true } when fetch responds 200 ok', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+    const result = await validateKeyHandler('sk-valid', mockFetch);
+    expect(result).toEqual({ valid: true });
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/models',
+      expect.objectContaining({ headers: { Authorization: 'Bearer sk-valid' } })
+    );
+  });
+
+  it('returns { valid: false } when fetch responds 401', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({ ok: false, status: 401 });
+    expect(await validateKeyHandler('sk-bad', mockFetch)).toEqual({ valid: false });
+  });
+
+  it('returns { valid: false } on network error', async () => {
+    const mockFetch = jest.fn().mockRejectedValue(new Error('Network failure'));
+    expect(await validateKeyHandler('sk-test', mockFetch)).toEqual({ valid: false });
+  });
+
+  it('returns { valid: false } for empty string without calling fetch', async () => {
+    const mockFetch = jest.fn();
+    expect(await validateKeyHandler('', mockFetch)).toEqual({ valid: false });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns { valid: false } for null without calling fetch', async () => {
+    const mockFetch = jest.fn();
+    expect(await validateKeyHandler(null, mockFetch)).toEqual({ valid: false });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns { valid: false } for non-string key without calling fetch', async () => {
+    const mockFetch = jest.fn();
+    expect(await validateKeyHandler(42, mockFetch)).toEqual({ valid: false });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe('session storage persistence', () => {
   it('persists conversation under a tab-namespaced key', async () => {
     const stored = {};

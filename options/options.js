@@ -5,8 +5,6 @@
  * Validates the API key by calling GET /v1/models.
  */
 
-const OPENAI_MODELS_URL = 'https://api.openai.com/v1/models';
-
 // ---------------------------------------------------------------------------
 // DOM references
 // ---------------------------------------------------------------------------
@@ -87,18 +85,17 @@ async function _onSave(e) {
 // ---------------------------------------------------------------------------
 
 /**
- * Test the API key by calling GET /v1/models.
+ * Validate the API key by delegating to the background service worker.
+ * The SW makes the network call, keeping all OpenAI traffic in one place.
  * @param {string} apiKey
  * @returns {Promise<boolean>}
  */
 async function _validateApiKey(apiKey) {
   try {
-    const response = await fetch(OPENAI_MODELS_URL, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    return response.ok;
+    const response = await chrome.runtime.sendMessage({ action: 'validateKey', key: apiKey });
+    return Boolean(response && response.valid);
   } catch (_err) {
-    // Network error — treat as invalid (conservative)
+    // SW unavailable (e.g. extension reloading) — treat as invalid.
     return false;
   }
 }

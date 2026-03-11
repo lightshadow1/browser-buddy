@@ -81,6 +81,56 @@ describe('_setStatus — className', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Re-implementation of _validateApiKey (mirrors options.js after refactor)
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} apiKey
+ * @param {Function} mockSendMessage
+ * @returns {Promise<boolean>}
+ */
+async function validateApiKey(apiKey, mockSendMessage) {
+  try {
+    const response = await mockSendMessage({ action: 'validateKey', key: apiKey });
+    return Boolean(response && response.valid);
+  } catch (_err) {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tests: _validateApiKey delegating to service worker
+// ---------------------------------------------------------------------------
+
+describe('_validateApiKey — via sendMessage', () => {
+  it('returns true when SW responds { valid: true }', async () => {
+    const mockSend = jest.fn().mockResolvedValue({ valid: true });
+    expect(await validateApiKey('sk-good', mockSend)).toBe(true);
+  });
+
+  it('returns false when SW responds { valid: false }', async () => {
+    const mockSend = jest.fn().mockResolvedValue({ valid: false });
+    expect(await validateApiKey('sk-bad', mockSend)).toBe(false);
+  });
+
+  it('returns false when SW is unavailable (sendMessage throws)', async () => {
+    const mockSend = jest.fn().mockRejectedValue(new Error('Could not establish connection'));
+    expect(await validateApiKey('sk-test', mockSend)).toBe(false);
+  });
+
+  it('returns false when response is null', async () => {
+    const mockSend = jest.fn().mockResolvedValue(null);
+    expect(await validateApiKey('sk-test', mockSend)).toBe(false);
+  });
+
+  it('sends { action: validateKey, key } to the service worker', async () => {
+    const mockSend = jest.fn().mockResolvedValue({ valid: true });
+    await validateApiKey('sk-mykey', mockSend);
+    expect(mockSend).toHaveBeenCalledWith({ action: 'validateKey', key: 'sk-mykey' });
+  });
+});
+
 describe('_setStatus — textContent (XSS safety)', () => {
   let el;
   beforeEach(() => {

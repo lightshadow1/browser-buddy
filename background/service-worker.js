@@ -20,6 +20,7 @@
 const browser = globalThis.browser || globalThis.chrome;
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_MODELS_URL = 'https://api.openai.com/v1/models';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const MAX_ARTICLE_CHARS = 48000;
 const MAX_HISTORY_PAIRS = 10;
@@ -41,6 +42,18 @@ const conversations = new Map();
  * @property {{ id: string, text: string }[]} paragraphs
  * @property {Message[]} messages
  */
+
+// ---------------------------------------------------------------------------
+// One-shot message handling (options page → background)
+// ---------------------------------------------------------------------------
+
+browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (!msg || msg.action !== 'validateKey') {
+    return false;
+  }
+  _handleValidateKey(msg.key).then(sendResponse);
+  return true; // keep channel open for async response
+});
 
 // ---------------------------------------------------------------------------
 // Port-based message handling (for streaming)
@@ -427,6 +440,32 @@ async function _streamCompletion(port, apiKey, model, messages, tabId, attempt =
     }
     console.error('[service-worker] Stream read error:', err);
     port.postMessage({ type: 'error', message: 'Stream interrupted. Please try again.' });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// API Key Validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate an OpenAI API key by making a lightweight GET /v1/models request.
+ * Called from the options page via chrome.runtime.sendMessage.
+ *
+ * @param {unknown} key
+ * @returns {Promise<{ valid: boolean }>}
+ */
+async function _handleValidateKey(key) {
+  if (!key || typeof key !== 'string') {
+    return { valid: false };
+  }
+  try {
+    const response = await fetch(OPENAI_MODELS_URL, {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    return { valid: response.ok };
+  } catch (_err) {
+    // Network error — treat as invalid.
+    return { valid: false };
   }
 }
 
