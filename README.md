@@ -63,8 +63,8 @@ graph TD
 ### 1. Install & Build
 
 ```bash
-git clone https://github.com/browser-buddy/article-summarizer.git
-cd article-summarizer
+git clone https://github.com/lightshadow1/browser-buddy.git
+cd browser-buddy
 npm install
 node build.js
 # Outputs: dist/chrome/ and dist/firefox/
