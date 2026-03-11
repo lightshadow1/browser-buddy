@@ -24,6 +24,7 @@ const OPENAI_MODELS_URL = 'https://api.openai.com/v1/models';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const MAX_ARTICLE_CHARS = 48000;
 const MAX_HISTORY_PAIRS = 10;
+const MAX_QUESTION_LENGTH = 4000;
 
 /** @type {Map<number, Conversation>} Per-tab conversation store */
 const conversations = new Map();
@@ -238,8 +239,9 @@ async function _handleFollowUp(port, tabId, msg) {
 
   const model = (await _getSetting('openai_model')) || DEFAULT_MODEL;
 
-  // Append user question
-  conversation.messages.push({ role: 'user', content: msg.question.trim() });
+  // Append user question (capped to prevent memory DoS and API quota exhaustion)
+  const question = msg.question.trim().slice(0, MAX_QUESTION_LENGTH);
+  conversation.messages.push({ role: 'user', content: question });
 
   // Trim history to keep last N pairs (system + user/assistant alternates)
   _trimHistory(conversation);

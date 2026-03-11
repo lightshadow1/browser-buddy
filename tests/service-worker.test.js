@@ -492,11 +492,17 @@ describe('AbortError handling', () => {
 // Tests: followUp question validation
 // ---------------------------------------------------------------------------
 
+const MAX_QUESTION_LENGTH = 4000;
+
 function validateFollowUpQuestion(question) {
   if (!question || typeof question !== 'string' || !question.trim()) {
     return { valid: false, reason: 'Question cannot be empty.' };
   }
   return { valid: true };
+}
+
+function truncateQuestion(question) {
+  return question.trim().slice(0, MAX_QUESTION_LENGTH);
 }
 
 describe('followUp question validation', () => {
@@ -525,6 +531,33 @@ describe('followUp question validation', () => {
 
   it('rejects undefined', () => {
     expect(validateFollowUpQuestion(undefined).valid).toBe(false);
+  });
+});
+
+describe('truncateQuestion', () => {
+  it('passes through a short question unchanged', () => {
+    expect(truncateQuestion('What is the main argument?')).toBe('What is the main argument?');
+  });
+
+  it('trims whitespace before measuring length', () => {
+    expect(truncateQuestion('  hello  ')).toBe('hello');
+  });
+
+  it('truncates a question exceeding MAX_QUESTION_LENGTH', () => {
+    const long = 'x'.repeat(5000);
+    const result = truncateQuestion(long);
+    expect(result.length).toBe(MAX_QUESTION_LENGTH);
+  });
+
+  it('preserves a question of exactly MAX_QUESTION_LENGTH characters', () => {
+    const exact = 'a'.repeat(MAX_QUESTION_LENGTH);
+    expect(truncateQuestion(exact)).toBe(exact);
+  });
+
+  it('does not exceed MAX_QUESTION_LENGTH after trimming', () => {
+    const padded = ' ' + 'b'.repeat(5000) + ' ';
+    const result = truncateQuestion(padded);
+    expect(result.length).toBe(MAX_QUESTION_LENGTH);
   });
 });
 
