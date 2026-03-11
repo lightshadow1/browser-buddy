@@ -53,31 +53,31 @@ async function _onSave(e) {
 
   // Basic client-side validation
   if (!apiKey) {
-    _setStatus('error', '❌ Please enter an API key.');
+    _setStatus('error', 'Please enter an API key.');
     apiKeyInput.focus();
     return;
   }
 
   if (!apiKey.startsWith('sk-')) {
-    _setStatus('error', '❌ API key must start with <code>sk-</code>.');
+    _setStatus('error', 'API key must start with sk-.');
     apiKeyInput.focus();
     return;
   }
 
-  _setStatus('loading', '⏳ Validating key…');
+  _setStatus('loading', 'Validating key…');
   saveBtn.disabled = true;
 
   const valid = await _validateApiKey(apiKey);
 
   if (!valid) {
-    _setStatus('error', '❌ Invalid API key. Please check and try again.');
+    _setStatus('error', 'Invalid API key. Please check and try again.');
     saveBtn.disabled = false;
     apiKeyInput.focus();
     return;
   }
 
   chrome.storage.local.set({ openai_api_key: apiKey, openai_model: model }, () => {
-    _setStatus('success', '✅ Settings saved successfully.');
+    _setStatus('success', 'Settings saved successfully.');
     saveBtn.disabled = false;
   });
 }
@@ -110,11 +110,12 @@ async function _validateApiKey(apiKey) {
 /**
  * Update the status element.
  * @param {'loading'|'success'|'error'} type
- * @param {string} html
+ * @param {string} message - Plain-text message (no HTML).
  */
-function _setStatus(type, html) {
-  statusEl.className = `status ${type}`;
-  statusEl.innerHTML = html;
+function _setStatus(type, message) {
+  const VALID_TYPES = new Set(['loading', 'success', 'error']);
+  statusEl.className = `status ${VALID_TYPES.has(type) ? type : 'error'}`;
+  statusEl.textContent = message;
 }
 
 /**
