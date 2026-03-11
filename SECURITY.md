@@ -12,7 +12,7 @@
 
 If you discover a security issue, please report it responsibly:
 
-1. Email: security@browser-buddy.dev (or open a [GitHub Security Advisory](https://github.com/browser-buddy/article-summarizer/security/advisories/new))
+1. Email: security@browser-buddy.dev (or open a [GitHub Security Advisory](https://github.com/lightshadow1/browser-buddy/security/advisories/new))
 2. Include a clear description of the vulnerability, steps to reproduce, and potential impact
 3. We will acknowledge your report within 48 hours and aim to release a fix within 14 days
 
